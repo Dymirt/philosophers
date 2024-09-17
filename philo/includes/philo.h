@@ -6,7 +6,7 @@
 /*   By: dkolida <dkolida@student.42warsaw.pl>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/09/16 12:10:14 by dkolida           #+#    #+#             */
-/*   Updated: 2024/09/17 21:44:26 by dkolida          ###   ########.fr       */
+/*   Updated: 2024/09/18 00:19:05 by dkolida          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -26,6 +26,7 @@ typedef struct table_s
 	int	time_to_eat;
 	int	time_to_sleep;
 	int	eat_count;
+	pthread_mutex_t *forks;
 }	t_table;
 
 typedef struct philo_s
@@ -35,8 +36,15 @@ typedef struct philo_s
 	struct timeval	*tv_start;
 	t_table			*table;
 	int				eat_count;
+	pthread_mutex_t	*left_fork;
+	pthread_mutex_t	*right_fork;
+	int				last_meal;
+	int				is_dead;
 }	t_philo;
 
-int	get_timestamp(struct timeval *tv_start);
+int		get_timestamp(struct timeval *tv_start);
+
+// routines
+void	eat_routine(t_philo *philo);
 
 #endif
