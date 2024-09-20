@@ -6,35 +6,33 @@
 /*   By: dkolida <dkolida@student.42warsaw.pl>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/09/16 12:08:45 by dkolida           #+#    #+#             */
-/*   Updated: 2024/09/18 00:31:24 by dkolida          ###   ########.fr       */
+/*   Updated: 2024/09/21 00:24:43 by dkolida          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "philo.h"
 
-int	philo_init(t_table *table, t_philo ***philosophers);
+int	philos_init(t_table *table, t_philo ***philosophers);
+int	philo_init(t_table *table, t_philo **philosophers, int i, struct timeval *shared_tv_start);
 
 void	*thread_function(void *arg)
 {
 	t_philo			*philo;
-	int 			i;
+	int				i;
 
 	philo = (t_philo *)arg;
-
 	philo->last_meal = get_timestamp(philo->tv_start);
-
 	i = 0;
-	while (i < philo->table->eat_count && !philo->is_dead)
+	while (i < philo->table->eat_count && !simulation_is_end(philo) && !philo_is_dead(philo))
 	{
 		eat_routine(philo);
-		philo->last_meal = get_timestamp(philo->tv_start);
-		if (philo->is_dead)
+		if (philo_is_dead(philo) || simulation_is_end(philo))
 			break ;
-		printf("%d %d is sleeping\n", get_timestamp(philo->tv_start), philo->id);
+		mutex_printf(philo, "is sleeping");
 		usleep(philo->table->time_to_sleep * 1000);
-		if (philo->is_dead)
+		if (philo_is_dead(philo) || simulation_is_end(philo))
 			break ;
-		printf("%d %d is thinking\n", get_timestamp(philo->tv_start), philo->id);
+		mutex_printf(philo, "is thinking");
 		i++;
 	}
 	return (NULL);
@@ -57,6 +55,7 @@ int	main(int argc, char **argv)
 	table.time_to_eat = atoi(argv[3]);
 	table.time_to_sleep = atoi(argv[4]);
 	table.forks = malloc(table.philosophers_count * sizeof(pthread_mutex_t));
+	table.simulation_end = 0;
 	if (table.forks == NULL)
 	{
 		printf("Error: malloc failed\n");
@@ -75,7 +74,17 @@ int	main(int argc, char **argv)
 		}
 		i++;
 	}
-	philo_init(&table, &philosophers);
+	if (pthread_mutex_init(&table.print_mutex, NULL) != 0)
+	{
+		perror("Failed to initialize mutex");
+		return (1);
+	}
+	if (pthread_mutex_init(&table.change_value_mutex, NULL) != 0)
+	{
+		perror("Failed to initialize mutex");
+		return (1);
+	}
+	philos_init(&table, &philosophers);
 	i = 0;
 	while (i < table.philosophers_count)
 	{
@@ -86,25 +95,16 @@ int	main(int argc, char **argv)
 		}
 		i++;
 	}
-	int loop = 1;
-	while (loop)
+	while (!table.simulation_end)
 	{
 		i = 0;
 		while (i < table.philosophers_count)
 		{
-			if (get_timestamp(philosophers[i]->tv_start) - philosophers[i]->last_meal > table.time_to_die)
+			if (get_timestamp(philosophers[i]->tv_start) - mutex_get_value(&table, &philosophers[i]->last_meal) > table.time_to_die)
 			{
-
-				printf("%d %d died\n", get_timestamp(philosophers[i]->tv_start), philosophers[i]->id);
-				//free_philo(philosophers);
-				//free(table.forks);
-				int j = 0;
-				while (j < table.philosophers_count)
-				{
-					philosophers[j]->is_dead = 1;
-					j++;
-				}
-				loop = 0;
+				mutex_printf(philosophers[i], "died");
+				mutex_set_value(&table, &philosophers[i]->is_dead, 1);
+				mutex_set_value(&table, &table.simulation_end, 1);
 				break ;
 			}
 			i++;
@@ -142,7 +142,7 @@ void	free_philo(t_philo **philosophers)
 	free(philosophers);
 }
 
-int philo_init(t_table *table, t_philo ***philosophers)
+int	philos_init(t_table *table, t_philo ***philosophers)
 {
 	int				i;
 	struct timeval	*shared_tv_start;
@@ -162,21 +162,31 @@ int philo_init(t_table *table, t_philo ***philosophers)
 	}
 	while (i < table->philosophers_count)
 	{
-		(*philosophers)[i] = malloc(sizeof(t_philo));
-		if ((*philosophers)[i] == NULL)
+		if (!philo_init(table, *philosophers, i, shared_tv_start))
 		{
-			printf("Error: malloc failed\n");
+			free_philo(*philosophers);
 			return (0);
 		}
-		(*philosophers)[i]->id = i + 1;
-		(*philosophers)[i]->tv_start = shared_tv_start;
-		(*philosophers)[i]->table = table;
-		(*philosophers)[i]->eat_count = 0;
-		(*philosophers)[i]->left_fork = &table->forks[i];
-		(*philosophers)[i]->right_fork = &table->forks[(i + 1) % table->philosophers_count];
-		(*philosophers)[i]->is_dead = 0;
 		i++;
 	}
 	gettimeofday(shared_tv_start, NULL);
+	return (1);
+}
+
+int philo_init(t_table *table, t_philo **philosophers, int i, struct timeval *shared_tv_start)
+{
+	philosophers[i] = malloc(sizeof(t_philo));
+	if (philosophers[i] == NULL)
+	{
+		printf("Error: malloc failed\n");
+		return (0);
+	}
+	philosophers[i]->id = i + 1;
+	philosophers[i]->tv_start = shared_tv_start;
+	philosophers[i]->table = table;
+	philosophers[i]->eat_count = 0;
+	philosophers[i]->left_fork = &table->forks[i];
+	philosophers[i]->right_fork = &table->forks[(i + 1) % table->philosophers_count];
+	philosophers[i]->is_dead = 0;
 	return (1);
 }
