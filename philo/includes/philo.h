@@ -6,7 +6,7 @@
 /*   By: dkolida <dkolida@student.42warsaw.pl>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/09/16 12:10:14 by dkolida           #+#    #+#             */
-/*   Updated: 2024/09/21 00:13:59 by dkolida          ###   ########.fr       */
+/*   Updated: 2024/09/21 17:26:58 by dkolida          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -57,5 +57,11 @@ int		philo_is_dead(t_philo *philo);
 void	mutex_printf(t_philo *philo, char *str);
 void	mutex_set_value(t_table *table, int *key, int value);
 int		mutex_get_value(t_table *table, int *key);
+
+// philo
+int		philos_init(t_table *table, t_philo ***philosophers);
+
+// table
+int		table_init(t_table *table, int argc, char **argv);
 
 #endif

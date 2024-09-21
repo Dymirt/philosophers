@@ -6,7 +6,7 @@
 #    By: dkolida <dkolida@student.42warsaw.pl>      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2024/07/16 21:32:26 by dmodrzej          #+#    #+#              #
-#    Updated: 2024/09/16 12:12:58 by dkolida          ###   ########.fr        #
+#    Updated: 2024/09/21 16:05:51 by dkolida          ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -62,14 +62,12 @@ $(LIBFT):
 
 clean:
 			@echo "$(CYAN)Cleaning .o files...$(NC)"
-			@make clean -sC $(LIBFT_DIR)
 			@rm -rf $(OBJ_DIR)
 			@$(PRINT_LOADING)
 			@echo "$(GREEN)Cleaning of of .o files successful	$(TICK)$(NC)"
 
 fclean:		clean
 			@echo "$(CYAN)Cleaning libs & main program...$(NC)"
-			@rm -f $(NAME) $(LIBFT)
 			@$(PRINT_LOADING)
 			@echo "$(GREEN)Full cleaning successful		$(TICK)$(NC)"
 
