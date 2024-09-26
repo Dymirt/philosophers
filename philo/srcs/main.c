@@ -6,7 +6,7 @@
 /*   By: dkolida <dkolida@student.42warsaw.pl>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/09/16 12:08:45 by dkolida           #+#    #+#             */
-/*   Updated: 2024/09/21 23:16:01 by dkolida          ###   ########.fr       */
+/*   Updated: 2024/09/26 13:43:58 by dkolida          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,18 +14,19 @@
 
 int		threds_work(t_table *table, t_philo **philosophers);
 void	simulation_check(t_table *table, t_philo **philosophers);
+void	free_at_end(t_table *table, t_philo **philosophers);
 
 void	*thread_function(void *arg)
 {
 	t_philo			*philo;
-	int				i;
 
 	philo = (t_philo *)arg;
-	philo->last_meal = get_timestamp(philo->tv_start);
-	i = 0;
-	while (i < philo->table->eat_count && !simulation_is_end(philo)
-		&& !philo_is_dead(philo))
+	mutex_set_value(philo->table, &philo->last_meal,
+		get_timestamp(philo->tv_start));
+	while (!simulation_is_end(philo) && !philo_is_dead(philo))
 	{
+		if (philo_is_dead(philo) || simulation_is_end(philo))
+			break ;
 		eat_routine(philo);
 		if (philo_is_dead(philo) || simulation_is_end(philo))
 			break ;
@@ -34,7 +35,6 @@ void	*thread_function(void *arg)
 		if (philo_is_dead(philo) || simulation_is_end(philo))
 			break ;
 		mutex_printf(philo, "is thinking");
-		i++;
 	}
 	return (NULL);
 }
@@ -43,7 +43,6 @@ int	main(int argc, char **argv)
 {
 	t_philo	**philosophers;
 	t_table	table;
-	int		i;
 
 	philosophers = NULL;
 	if (argc != 5 && argc != 6)
@@ -55,26 +54,35 @@ int	main(int argc, char **argv)
 		return (1);
 	philos_init(&table, &philosophers);
 	threds_work(&table, philosophers);
-	i = 0;
-	while (i < table.philosophers_count)
-	{
-		free(philosophers[i]);
-		i++;
-	}
+	free_at_end(&table, philosophers);
 	return (0);
 }
 
-void	free_philo(t_philo **philosophers)
+void	free_at_end(t_table *table, t_philo **philosophers)
 {
 	int	i;
 
 	i = 0;
-	while (philosophers[i])
+	while (i < table->philosophers_count)
 	{
+		if (philosophers[i]->tv_start != NULL)
+		{
+			free(philosophers[i]->tv_start);
+			philosophers[i]->tv_start = NULL;
+		}
 		free(philosophers[i]);
 		i++;
 	}
 	free(philosophers);
+	i = 0;
+	while (i < table->philosophers_count)
+	{
+		pthread_mutex_destroy(&table->forks[i]);
+		i++;
+	}
+	pthread_mutex_destroy(&table->print_mutex);
+	pthread_mutex_destroy(&table->change_value_mutex);
+	free(table->forks);
 }
 
 int	threds_work(t_table *table, t_philo **philosophers)
@@ -106,23 +114,29 @@ int	threds_work(t_table *table, t_philo **philosophers)
 	return (1);
 }
 
-void	simulation_check(t_table *table, t_philo **philosophers)
+void	simulation_check(t_table *table, t_philo **philos)
 {
 	int	i;
+	int	full_philos;
 
+	full_philos = 0;
 	while (!table->simulation_end)
 	{
+		if (full_philos == table->philosophers_count)
+			mutex_set_value(table, &table->simulation_end, 1);
 		i = 0;
-		while (i < table->philosophers_count)
+		while (i < table->philosophers_count && !table->simulation_end)
 		{
-			if (get_timestamp(philosophers[i]->tv_start)
-				- mutex_get_value(table, &philosophers[i]->last_meal)
-				> table->time_to_die)
+			if (is_full(table, philos, i) && !philo_is_dead(philos[i]))
 			{
-				mutex_printf(philosophers[i], "died");
-				mutex_set_value(table, &philosophers[i]->is_dead, 1);
+				mutex_set_value(table, &philos[i]->is_dead, 1);
+				full_philos++;
+			}
+			if (time_to_die(table, philos, i) && !philo_is_dead(philos[i]))
+			{
+				mutex_printf(philos[i], "died");
+				mutex_set_value(table, &philos[i]->is_dead, 1);
 				mutex_set_value(table, &table->simulation_end, 1);
-				break ;
 			}
 			i++;
 		}

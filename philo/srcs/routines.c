@@ -6,7 +6,7 @@
 /*   By: dkolida <dkolida@student.42warsaw.pl>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/09/17 23:40:06 by dkolida           #+#    #+#             */
-/*   Updated: 2024/09/21 00:13:31 by dkolida          ###   ########.fr       */
+/*   Updated: 2024/09/26 13:28:52 by dkolida          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -27,11 +27,14 @@ void	eat_routine(t_philo *philo)
 		usleep(philo->table->time_to_die * 1000);
 		return ;
 	}
+	if (philo_is_dead(philo) || simulation_is_end(philo))
+		return ;
 	mutex_printf(philo, "is eating");
 	mutex_set_value(table, &philo->last_meal, get_timestamp(philo->tv_start));
 	usleep(philo->table->time_to_eat * 1000);
 	mutex_set_value(table, &philo->last_meal, get_timestamp(philo->tv_start));
-	philo->eat_count++;
+	mutex_set_value(table, &philo->eat_count,
+		mutex_get_value(table, &philo->eat_count) + 1);
 	pthread_mutex_unlock(philo->right_fork);
 	pthread_mutex_unlock(philo->left_fork);
 }
@@ -54,6 +57,8 @@ int	get_forks(t_philo *philo)
 	mutex_fork_lock(philo, first_fork);
 	mutex_printf(philo, "has taken a fork");
 	if (philo->table->philosophers_count == 1)
+		return (0);
+	if (philo_is_dead(philo) || simulation_is_end(philo))
 		return (0);
 	mutex_fork_lock(philo, second_fork);
 	mutex_printf(philo, "has taken a fork");

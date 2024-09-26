@@ -6,7 +6,7 @@
 /*   By: dkolida <dkolida@student.42warsaw.pl>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/09/16 12:10:14 by dkolida           #+#    #+#             */
-/*   Updated: 2024/09/21 17:26:58 by dkolida          ###   ########.fr       */
+/*   Updated: 2024/09/26 13:43:46 by dkolida          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -50,6 +50,8 @@ void	eat_routine(t_philo *philo);
 
 // helpers
 int		get_timestamp(struct timeval *tv_start);
+int		time_to_die(t_table *table, t_philo **philosophers, int i);
+int		is_full(t_table *table, t_philo **philos, int i);
 
 // mutex_wrapers
 int		simulation_is_end(t_philo *philo);
@@ -63,5 +65,7 @@ int		philos_init(t_table *table, t_philo ***philosophers);
 
 // table
 int		table_init(t_table *table, int argc, char **argv);
+
+int		ft_atoi(const char *nptr);
 
 #endif
